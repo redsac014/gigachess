@@ -5,7 +5,7 @@ import (
 	"unicode"
 )
 
-const startPositionFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR" // 9+9+
+const startPositionFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
 
 type PieceType byte
 
@@ -32,6 +32,11 @@ type Piece struct {
 }
 
 type Board [][]Piece
+
+var colorToString = map[Color]string{
+	White: "white",
+	Black: "black",
+}
 
 func FENToBoard(FEN string, nranks, nfiles int) (Board, error) {
 	rank := 0
@@ -72,7 +77,7 @@ func FENToBoard(FEN string, nranks, nfiles int) (Board, error) {
 
 		default:
 			if c >= '1' && c <= '8' {
-				file += int(c - '0') // start counting from '0' in ascii till c to get int conversion
+				file += int(c - '0') // counts how far away c is from '0' in ascii table
 			} else {
 				return nil, fmt.Errorf("Invalid FEN at index %d: character '%c' is not supported",
 					i, c)
@@ -109,16 +114,73 @@ func (b Board) print() {
 	fmt.Print(str)
 }
 
-func main() {
-	nranks := 8
-	nfiles := 8
+func (b Board) move(from, to, turn string) error {
+	nFiles := len(b[0])
+	nRanks := len(b)
 
-	board, err := FENToBoard(startPositionFEN, nranks, nfiles)
+	fromFile := int(from[0] - 'a')            // counts how far away char is from 'a'/'1' in ascii table
+	fromRank := nRanks - 1 - int(from[1]-'1') // board starts top left but notation bottom left
+
+	toFile := int(to[0] - 'a')
+	toRank := nRanks - 1 - int(to[1]-'1')
+
+	if fromFile < 0 || fromFile >= nFiles ||
+		toFile < 0 || toFile >= nFiles ||
+		fromRank < 0 || fromRank >= nRanks ||
+		toRank < 0 || toRank >= nRanks {
+		return fmt.Errorf("error: move (%s %s) is out of bounds", from, to)
+	}
+
+	fromPiece := b[fromRank][fromFile]
+	if colorToString[fromPiece.Color] != turn {
+		return fmt.Errorf("error: %s cannot move a piece that isn't theirs", colorToString[fromPiece.Color])
+	}
+
+	b[toRank][toFile] = b[fromRank][fromFile]
+	b[fromRank][fromFile].Piece = None
+
+	return nil
+}
+
+func (b Board) game() {
+	turn := "white"
+	for {
+		var from string
+		var to string
+
+		b.print()
+
+		fmt.Printf("%s move: ", turn)
+		fmt.Scan(&from, &to)
+
+		if len(from) != 2 || len(to) != 2 {
+			fmt.Printf("error: incorrect notation. should be sth like `e2 e4` instead of `%s %s`\n", from, to)
+			continue
+		}
+
+		err := b.move(from, to, turn)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		if turn == "white" {
+			turn = "black"
+		} else {
+			turn = "white"
+		}
+	}
+}
+
+func main() {
+	nRanks := 8
+	nFiles := 8
+
+	board, err := FENToBoard(startPositionFEN, nRanks, nFiles)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	board.print()
-
+	board.game()
 }
