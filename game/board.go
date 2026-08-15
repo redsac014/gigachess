@@ -10,7 +10,7 @@ const startPositionFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR" // 9+9+
 type PieceType byte
 
 const (
-	None   PieceType = 0
+	None   PieceType = '·'
 	Pawn   PieceType = 'p'
 	Knight PieceType = 'n'
 	Bishop PieceType = 'b'
@@ -31,17 +31,23 @@ type Piece struct {
 	Color Color
 }
 
-func FENToBoard(FEN string, nranks, nfiles int) ([][]Piece, error) {
+type Board [][]Piece
+
+func FENToBoard(FEN string, nranks, nfiles int) (Board, error) {
 	rank := 0
 	file := 0
 
 	board := make([][]Piece, nranks)
 	for i := range board {
 		board[i] = make([]Piece, nfiles)
+
+		for j := range board {
+			board[i][j] = Piece{Piece: None}
+		}
 	}
 
 	for i, c := range FEN {
-		switch unicode.ToLower(c) {
+		switch c {
 		case '/':
 			if file != nfiles {
 				return nil, fmt.Errorf("Invalid FEN at index %d: rank contains %d files instead of %d",
@@ -50,15 +56,15 @@ func FENToBoard(FEN string, nranks, nfiles int) ([][]Piece, error) {
 			rank++
 			file = 0
 
-		case 'p', 'n', 'b', 'r', 'q', 'k':
-			// if uppercase convert to lowercase bc needed for conversion to PieceType
-			if c >= 'A' && c <= 'Z' {
-				c = unicode.ToLower(c)
-			}
-
+		case 'p', 'n', 'b', 'r', 'q', 'k', 'P', 'N', 'B', 'R', 'Q', 'K':
 			color := White
 			if c >= 'a' && c <= 'z' {
 				color = Black
+			}
+
+			// if uppercase convert to lowercase bc needed for conversion to PieceType
+			if c >= 'A' && c <= 'Z' {
+				c = unicode.ToLower(c)
 			}
 
 			board[rank][file] = Piece{Piece: PieceType(c), Color: color}
@@ -77,19 +83,28 @@ func FENToBoard(FEN string, nranks, nfiles int) ([][]Piece, error) {
 	return board, nil
 }
 
-func printBoard(board [][]Piece) {
-	str := ""
-	for rank := range board {
-		for file := range board[rank] {
-			piece := rune(board[rank][file].Piece)
+func (b Board) print() {
+	notations := "87654321"
+	str := "  ┌────────────────────────┐\n"
 
-			if board[rank][file].Color == White {
-				piece = unicode.ToUpper(piece)
+	for rankIdx, rank := range b {
+
+		str += string(notations[rankIdx])
+		str += " │"
+		for _, piece := range rank {
+			r := rune(piece.Piece)
+
+			if piece.Color == White {
+				r = unicode.ToUpper(r)
 			}
-			str = fmt.Sprintf("%s %c", str, piece)
+
+			str = fmt.Sprintf("%s %c ", str, r)
+
 		}
-		str += "\n"
+		str += "│\n"
 	}
+	str += "  └────────────────────────┘\n"
+	str += "    a  b  c  d  e  f  g  h\n"
 
 	fmt.Print(str)
 }
@@ -101,7 +116,9 @@ func main() {
 	board, err := FENToBoard(startPositionFEN, nranks, nfiles)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 
-	printBoard(board)
+	board.print()
+
 }
